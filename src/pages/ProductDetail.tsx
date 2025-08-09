@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Star, Shield, Truck, User, Phone, MapPin, Package } from 'lucide-react';
-import { products as productsData } from '../data/products'; // ✅ Correct import
+import {
+  ArrowLeft,
+  MessageCircle,
+  Star,
+  Shield,
+  Truck,
+  User,
+  Phone,
+  MapPin,
+  Package
+} from 'lucide-react';
+import { products as productsData } from '../data/products';
 
 interface Product {
   id: string;
@@ -19,7 +29,7 @@ interface FormData {
   prenom: string;
   adresse: string;
   telephone: string;
-  quantite: number;
+  quantite: number | ''; // autoriser '' pour input contrôlé
 }
 
 const ProductDetail: React.FC = () => {
@@ -38,26 +48,20 @@ const ProductDetail: React.FC = () => {
     quantite: 1
   });
 
-useEffect(() => {
-  const foundProduct = productsData.find((p) => p.id === id);
-  if (foundProduct) {
-    setProduct(foundProduct);
-  }
-}, [id]);
+  useEffect(() => {
+    const foundProduct = productsData.find((p) => p.id === id);
+    if (foundProduct) setProduct(foundProduct);
+  }, [id]);
 
   useEffect(() => {
     if (product && location.hash) {
-      const sectionId = location.hash.replace("#", "");
-      // Wait until DOM is ready before scrolling
+      const sectionId = location.hash.replace('#', '');
       setTimeout(() => {
         const sectionElement = document.getElementById(sectionId);
-        if (sectionElement) {
-          sectionElement.scrollIntoView({ behavior: "smooth" });
-        }
+        if (sectionElement) sectionElement.scrollIntoView({ behavior: 'smooth' });
       }, 50);
     }
   }, [product, location.hash]);
-
 
   if (!product) {
     return (
@@ -68,33 +72,69 @@ useEffect(() => {
             onClick={() => navigate('/')}
             className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            Retour à l&apos;accueil
           </button>
         </div>
       </div>
     );
   }
 
+  // Gestion du changement input
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'quantite' ? parseInt(value) || 1 : value
-    }));
+
+    if (name === 'quantite') {
+      // Autoriser vide pour pouvoir effacer
+      if (value === '') {
+        setFormData((prev) => ({ ...prev, quantite: '' }));
+        return;
+      }
+      const numericValue = parseInt(value);
+      if (!isNaN(numericValue) && numericValue >= 1 && numericValue <= 10) {
+        setFormData((prev) => ({ ...prev, quantite: numericValue }));
+      }
+      // Ignorer valeurs invalides
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
-const handleFormSubmit = (e: React.FormEvent) => {
-  e.preventDefault();
+  // Incrémenter quantité
+  const incrementQuantity = () => {
+    setFormData((prev) => {
+      const current = typeof prev.quantite === 'number' ? prev.quantite : 1;
+      return {
+        ...prev,
+        quantite: current < 10 ? current + 1 : current
+      };
+    });
+  };
 
-  const selectedImagePath = product.images[selectedImageIndex];
+  // Décrémenter quantité
+  const decrementQuantity = () => {
+    setFormData((prev) => {
+      const current = typeof prev.quantite === 'number' ? prev.quantite : 1;
+      return {
+        ...prev,
+        quantite: current > 1 ? current - 1 : current
+      };
+    });
+  };
 
-  const message = `🕐 *NOUVELLE RÉSERVATION*
+  // Soumission formulaire
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const selectedImagePath = product.images[selectedImageIndex];
+    const quantite = typeof formData.quantite === 'number' ? formData.quantite : 1;
+
+    const message = `🕐 *NOUVELLE RÉSERVATION*
 
 *Produit:* ${product.brand} ${product.name}
 *Image sélectionnée:* ${selectedImagePath}
 *Prix unitaire:* ${product.price} ${product.currency}
-*Quantité:* ${formData.quantite}
-*Total:* ${product.price * formData.quantite} ${product.currency}
+*Quantité:* ${quantite}
+*Total:* ${product.price * quantite} ${product.currency}
 
 👤 *Informations client:*
 *Nom:* ${formData.nom}
@@ -104,10 +144,9 @@ const handleFormSubmit = (e: React.FormEvent) => {
 
 Merci de confirmer cette réservation.`;
 
-  const whatsappUrl = `https://wa.me/212689585941?text=${encodeURIComponent(message)}`;
-  window.open(whatsappUrl, '_blank');
-};
-
+    const whatsappUrl = `https://wa.me/212689585941?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -128,16 +167,17 @@ Merci de confirmer cette réservation.`;
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Image Gallery */}
           <div className="space-y-4">
-            <div         
-                id="reserve-section"
-                className="aspect-square rounded-xl overflow-hidden bg-white border border-gray-200 shadow-lg">
+            <div
+              id="reserve-section"
+              className="aspect-square rounded-xl overflow-hidden bg-white border border-gray-200 shadow-lg"
+            >
               <img
                 src={product.images[selectedImageIndex]}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
-            
+
             {/* Thumbnail Gallery */}
             <div className="grid grid-cols-4 gap-3">
               {product.images.map((image, index) => (
@@ -149,6 +189,7 @@ Merci de confirmer cette réservation.`;
                       ? 'border-yellow-600'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
+                  aria-label={`Sélectionner image ${index + 1}`}
                 >
                   <img
                     src={image}
@@ -180,14 +221,6 @@ Merci de confirmer cette réservation.`;
               {product.price} {product.currency}
             </div>
 
-            {/* <div className="prose">
-              <p className="text-gray-700 text-lg leading-relaxed">
-                {product.description}
-              </p>
-            </div> */}
-
-          
-
             {/* Reservation Form */}
             {!showForm ? (
               <button
@@ -201,7 +234,7 @@ Merci de confirmer cette réservation.`;
                 <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                   Formulaire de Réservation
                 </h3>
-                
+
                 <form onSubmit={handleFormSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -219,7 +252,7 @@ Merci de confirmer cette réservation.`;
                         placeholder="Votre nom"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         <User className="w-4 h-4 inline mr-2" />
@@ -236,7 +269,7 @@ Merci de confirmer cette réservation.`;
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       <Phone className="w-4 h-4 inline mr-2" />
@@ -252,7 +285,7 @@ Merci de confirmer cette réservation.`;
                       placeholder="06 XX XX XX XX"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       <MapPin className="w-4 h-4 inline mr-2" />
@@ -268,32 +301,56 @@ Merci de confirmer cette réservation.`;
                       placeholder="Votre adresse complète"
                     />
                   </div>
-                  
+
+                  {/* Quantité avec boutons +/- */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                       <Package className="w-4 h-4 inline mr-2" />
                       Quantité
                     </label>
-                    <input
-                      type="number"
-                      name="quantite"
-                      value={formData.quantite}
-                      onChange={handleInputChange}
-                      min="1"
-                      max="10"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                    />
+                    <div className="flex items-center space-x-2 max-w-xs">
+                      <button
+                        type="button"
+                        onClick={decrementQuantity}
+                        disabled={formData.quantite === 1}
+                        className={`px-3 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-label="Décrémenter la quantité"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        name="quantite"
+                        value={formData.quantite === '' ? '' : formData.quantite}
+                        onChange={handleInputChange}
+                        min={1}
+                        max={10}
+                        className="w-full text-center px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                        aria-label="Quantité"
+                      />
+                      <button
+                        type="button"
+                        onClick={incrementQuantity}
+                        disabled={formData.quantite === 10}
+                        className={`px-3 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-label="Incrémenter la quantité"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                  
+
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <div className="flex justify-between items-center text-lg font-semibold">
                       <span className="text-gray-700">Total:</span>
                       <span className="text-yellow-600">
-                        {product.price * formData.quantite} {product.currency}
+                        {product.price *
+                          (typeof formData.quantite === 'number' ? formData.quantite : 1)}{' '}
+                        {product.currency}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="flex space-x-4">
                     <button
                       type="button"
@@ -313,31 +370,31 @@ Merci de confirmer cette réservation.`;
                 </form>
               </div>
             )}
-            
-            <div className="text-center text-gray-500 text-sm">
-                Contactez-nous au: +212 689 585 941
+
+            <div className="text-center text-gray-500 text-sm mt-4">
+              Contactez-nous au: +212 689 585 941
             </div>
           </div>
         </div>
 
-          {/* Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-md">
-                <Shield className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-                <div className="text-gray-900 font-semibold">Garantie</div>
-                <div className="text-gray-600 text-sm">2 ans</div>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-md">
-                <Truck className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-                <div className="text-gray-900 font-semibold">Livraison</div>
-                <div className="text-gray-600 text-sm">Gratuite</div>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-md">
-                <MessageCircle className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-                <div className="text-gray-900 font-semibold">Support</div>
-                <div className="text-gray-600 text-sm">24/7</div>
-              </div>
-            </div>
+        {/* Features */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-md">
+            <Shield className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+            <div className="text-gray-900 font-semibold">Garantie</div>
+            <div className="text-gray-600 text-sm">2 ans</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-md">
+            <Truck className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+            <div className="text-gray-900 font-semibold">Livraison</div>
+            <div className="text-gray-600 text-sm">Gratuite</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-md">
+            <MessageCircle className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+            <div className="text-gray-900 font-semibold">Support</div>
+            <div className="text-gray-600 text-sm">24/7</div>
+          </div>
+        </div>
       </div>
     </div>
   );
