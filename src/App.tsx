@@ -9,8 +9,8 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/" element={<Home/>} />
+          <Route path="/product/:id" element={<ProductDetail/>} />
         </Routes>
         <FloatingWhatsApp />
       </div>
