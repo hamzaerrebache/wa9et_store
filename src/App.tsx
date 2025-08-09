@@ -6,11 +6,11 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 
 function App() {
   return (
-    <Router>
+   <Router basename="/wa9et_store">
       <div className="App">
         <Routes>
-          <Route path="/" element={<Home/>} />
-          <Route path="/product/:id" element={<ProductDetail/>} />
+          <Route path="/" element={<Home />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
         </Routes>
         <FloatingWhatsApp />
       </div>
